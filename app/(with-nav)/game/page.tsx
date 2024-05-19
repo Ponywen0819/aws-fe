@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  IconDefinition,
   faFire,
   faLeaf,
   faWater,
@@ -31,6 +30,7 @@ import {
 import { Button } from "@nextui-org/button";
 import { Input } from "@nextui-org/input";
 import { Divider } from "@nextui-org/divider";
+import { Select, SelectSection, SelectItem } from "@nextui-org/select";
 
 type GameContextType = {};
 const context = createContext<GameContextType | null>(null);
@@ -151,7 +151,7 @@ const GamePage = () => {
     <context.Provider value={{}}>
       <div className="flex flex-col gap-2">
         <AIRPG story={story} isLoading={isLoading} />
-        <Intro />
+        <Intro country={countryCode} />
         <RemainIndicator remain={remain} />
         <Game
           remain={remain}
@@ -170,8 +170,46 @@ const GamePage = () => {
           isLoading={isLoading}
           isRolling={rolling}
         />
+        <LanguageInput
+          countryCode={countryCode}
+          setCountryCode={setCountryCode}
+        />
       </div>
     </context.Provider>
+  );
+};
+type LanguageProps = {
+  countryCode: string;
+  setCountryCode: (code: string) => void;
+};
+
+const LanguageInput = (props: LanguageProps) => {
+  const { countryCode, setCountryCode } = props;
+  const handleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setCountryCode(e.target.value);
+  };
+  return (
+    <div className="absolute bottom-0 left-0 w-32 h-24">
+      <Select
+        label="county_code"
+        className="max-w-xs"
+        defaultSelectedKeys={["en"]}
+        value={countryCode}
+        onChange={handleChange}
+      >
+        <SelectItem key={"en"} value={"en"}>
+          en
+        </SelectItem>
+
+        <SelectItem key={"sp"} value={"sp"}>
+          sp
+        </SelectItem>
+
+        <SelectItem key={"pt"} value={"pt"}>
+          pt
+        </SelectItem>
+      </Select>
+    </div>
   );
 };
 
@@ -356,24 +394,49 @@ const AIRPG = (props: { story: string[]; isLoading: boolean }) => {
   );
 };
 
-const Intro = () => {
+const Intro = (props: { country: string }) => {
+  const { country } = props;
+  const fireLabel =
+    country === "en"
+      ? "This is fire element"
+      : country === "sp"
+      ? "Esto es fuego"
+      : "Isso é fogo";
+  const waterLabel =
+    country === "en"
+      ? "This is water element"
+      : country === "sp"
+      ? "Esto es agua"
+      : "Isso é água";
+  const leafLabel =
+    country === "en"
+      ? "This is leaf element"
+      : country === "sp"
+      ? "Esto es hoja"
+      : "Isso é folha";
+  const windLabel =
+    country === "en"
+      ? "This is wind element"
+      : country === "sp"
+      ? "Esto es viento"
+      : "Isso é vento";
   return (
     <div className="flex justify-between my-4">
       <IntroCard>
         <IntroIcon icon={faFire} />
-        <IntroTitle>這是火元素</IntroTitle>
+        <IntroTitle>{fireLabel}</IntroTitle>
       </IntroCard>
       <IntroCard>
         <IntroIcon icon={faWater} />
-        <IntroTitle>這是水元素</IntroTitle>
+        <IntroTitle>{waterLabel}</IntroTitle>
       </IntroCard>
       <IntroCard>
         <IntroIcon icon={faLeaf} />
-        <IntroTitle>這是草元素</IntroTitle>
+        <IntroTitle>{leafLabel}</IntroTitle>
       </IntroCard>
       <IntroCard>
         <IntroIcon icon={faWind} />
-        <IntroTitle>這是風元素</IntroTitle>
+        <IntroTitle>{windLabel}</IntroTitle>
       </IntroCard>
     </div>
   );

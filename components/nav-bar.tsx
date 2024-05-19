@@ -6,7 +6,7 @@ export const NavBar = () => {
     <Navbar isBordered>
       <NavbarContent>
         <NavbarItem>
-          <Link href={"analyze"}>分析</Link>
+          <Link href={"help"}>支援</Link>
         </NavbarItem>
         <NavbarItem>
           <Link href={"game"}>遊戲</Link>
