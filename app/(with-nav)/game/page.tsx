@@ -152,7 +152,7 @@ const GamePage = () => {
       <div className="flex flex-col gap-2">
         <AIRPG story={story} isLoading={isLoading} />
         <Intro country={countryCode} />
-        <RemainIndicator remain={remain} />
+        <RemainIndicator remain={remain} country={countryCode} />
         <Game
           remain={remain}
           isLoading={isLoading}
@@ -299,25 +299,25 @@ const InitialModal = (props: {
     e.preventDefault();
     onRemainInput(number);
   };
+
+  const title = "please input point number";
   return (
     <Modal isOpen={isOpen} onOpenChange={() => {}}>
       <ModalContent>
         {(onClose) => (
           <>
-            <ModalHeader className="flex flex-col gap-1">
-              請輸入初始點數
-            </ModalHeader>
+            <ModalHeader className="flex flex-col gap-1">{title}</ModalHeader>
             <ModalBody>
               <form onSubmit={handleSubmit}>
                 <Input
                   type="number"
                   value={`${number}`}
-                  label="點數"
+                  label="point"
                   className="mb-2"
                   onChange={(e) => setNumber(parseInt(e.target.value))}
                 />
                 <div>
-                  <Button type="submit">提交</Button>
+                  <Button type="submit">Submit</Button>
                 </div>
               </form>
             </ModalBody>
@@ -342,7 +342,7 @@ const EndingModal = (props: {
       <ModalContent>
         {(onClose) => (
           <>
-            <ModalHeader className="flex flex-col gap-1">遊戲結束</ModalHeader>
+            <ModalHeader className="flex flex-col gap-1">GAME OVER</ModalHeader>
             <ModalBody>
               <p>{story[story.length - 1]}</p>
             </ModalBody>
