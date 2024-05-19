@@ -35,6 +35,9 @@ dependencies:
   '@nextui-org/input':
     specifier: ^2.1.21
     version: 2.1.21(@nextui-org/system@2.1.2)(@nextui-org/theme@2.2.3)(@types/react@18.3.2)(react-dom@18.3.1)(react@18.3.1)
+  '@nextui-org/modal':
+    specifier: ^2.0.33
+    version: 2.0.33(@nextui-org/system@2.1.2)(@nextui-org/theme@2.2.3)(framer-motion@11.1.9)(react-dom@18.3.1)(react@18.3.1)(tailwind-variants@0.2.1)
   '@nextui-org/navbar':
     specifier: ^2.0.30
     version: 2.0.30(@nextui-org/system@2.1.2)(@nextui-org/theme@2.2.3)(@types/react@18.3.2)(framer-motion@11.1.9)(react-dom@18.3.1)(react@18.3.1)(tailwind-variants@0.2.1)

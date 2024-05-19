@@ -12,7 +12,6 @@ import {
   FontAwesomeIconProps,
 } from "@fortawesome/react-fontawesome";
 import { Card, CardBody, CardFooter } from "@nextui-org/card";
-import { resolve } from "path";
 import {
   PropsWithChildren,
   createContext,
@@ -22,6 +21,16 @@ import {
 } from "react";
 import { Skeleton } from "@nextui-org/skeleton";
 import { ScrollShadow } from "@nextui-org/scroll-shadow";
+import {
+  Modal,
+  ModalContent,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
+} from "@nextui-org/modal";
+import { Button } from "@nextui-org/button";
+import { Input } from "@nextui-org/input";
+import { Divider } from "@nextui-org/divider";
 
 type GameContextType = {};
 const context = createContext<GameContextType | null>(null);
@@ -32,17 +41,31 @@ type GenRpgRequest = {
   clean_history: boolean;
 };
 
+enum IconEnum {
+  fire,
+  leaf,
+  water,
+  wind,
+}
+
 const rest_api_endpoint = process.env.NEXT_PUBLIC_API_ENDPOINT || "";
+
 const GamePage = () => {
   const [isError, setIsError] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [rolling, setRolling] = useState(false);
   const [session_id, setSessionId] = useState<string>("");
   const [countryCode, setCountryCode] = useState<string>("en");
-  const [elements, setElements] = useState<IconDefinition[][]>([]);
+  const [elements, setElements] = useState<IconEnum[][]>([]);
   const [story, setStory] = useState<string[]>([]);
+  const [remain, setRemain] = useState(-1);
 
   const triggerRolling = async () => {
+    setRemain((old) => {
+      if (old < 60) return 0;
+      return old - 60;
+    });
+
     setRolling(true);
     for (let i = 0; i < elements.length; i++) {
       await new Promise((resolve) => setTimeout(resolve, 200));
@@ -73,29 +96,33 @@ const GamePage = () => {
         return newElements;
       });
     }
+    setIsLoading(true);
     setRolling(false);
   };
 
   useEffect(() => {
     const sessionId = Math.random().toString(36).substring(7);
     setSessionId(sessionId);
-    let initialElements: IconDefinition[][] = [];
-    for (let i = 0; i < 4; i++) {
+    let initialElements: IconEnum[][] = [];
+    for (let i = 0; i < 5; i++) {
       const elementList = getElementList(3);
       initialElements.push(elementList);
     }
     setElements(initialElements);
   }, []);
 
-  const handleActionTaken = async (element_list: IconDefinition[][]) => {
+  const handleActionTaken = async (element_list: IconEnum[][]) => {
+    const scores = getScoreObject(element_list);
+    const totalScore = Object.values(scores).reduce((a, b) => a + b, 0);
+    setRemain((old) => old + totalScore);
+
     const payload = getGenRpgRequest(
-      element_list,
+      scores,
       session_id,
-      3,
+      remain + totalScore,
       countryCode,
       story.length > 0
     );
-    setIsLoading(true);
     const res = await fetch(rest_api_endpoint, {
       method: "POST",
       headers: {
@@ -116,6 +143,7 @@ const GamePage = () => {
   useEffect(() => {
     if (elements.length === 0) return;
     if (elements.some((e) => e.length !== 3)) return;
+    if (remain < 0) return;
     handleActionTaken(elements);
   }, [elements]);
 
@@ -124,27 +152,56 @@ const GamePage = () => {
       <div className="flex flex-col gap-2">
         <AIRPG story={story} isLoading={isLoading} />
         <Intro />
+        <RemainIndicator remain={remain} />
         <Game
+          remain={remain}
+          isLoading={isLoading}
           rolling={rolling}
           element_list={elements}
           onRoll={triggerRolling}
+        />
+        <InitialModal
+          isOpen={remain === -1}
+          onRemainInput={(remain) => setRemain(remain)}
+        />
+        <EndingModal
+          remain={remain}
+          story={story}
+          isLoading={isLoading}
+          isRolling={rolling}
         />
       </div>
     </context.Provider>
   );
 };
 
+const getScoreObject = (elements: IconEnum[][]) => {
+  const windScore = calcElementScore(elements, IconEnum.wind);
+  const fireScore = calcElementScore(elements, IconEnum.fire);
+  const waterScore = calcElementScore(elements, IconEnum.water);
+  const leafScore = calcElementScore(elements, IconEnum.leaf);
+
+  return {
+    windScore,
+    fireScore,
+    waterScore,
+    leafScore,
+  };
+};
+
 const getGenRpgRequest = (
-  elements: IconDefinition[][],
+  elements: {
+    windScore: number;
+    fireScore: number;
+    waterScore: number;
+    leafScore: number;
+  },
   session_id: string,
   remain: number,
   language: string,
   clean_history = false
 ) => {
-  const windScore = calcElementScore(elements, faWind);
-  const fireScore = calcElementScore(elements, faFire);
-  const waterScore = calcElementScore(elements, faWater);
-  const leafScore = calcElementScore(elements, faLeaf);
+  const { windScore, fireScore, waterScore, leafScore } = elements;
 
   const user_input = `Wind:${windScore}\nFire:${fireScore}\nWater:${waterScore}\nLeaf:${leafScore}\nRemain:${remain}\nLanguage:${language}`;
   return {
@@ -154,18 +211,17 @@ const getGenRpgRequest = (
   };
 };
 
-const calcElementScore = (
-  elements: IconDefinition[][],
-  icon: IconDefinition
-) => {
+const calcElementScore = (elements: IconEnum[][], icon: IconEnum) => {
   const showInFirstRow = elements[0].some((e) => e === icon);
   if (!showInFirstRow) return 0;
-  const countInRow = elements.filter((e) => e.some((e) => e === icon));
+  const index = elements.findIndex((e) => e.every((e) => e !== icon));
+  const countInRow = index !== -1 ? elements.slice(0, index) : elements;
   const countLength = countInRow.length;
   if (countLength < 3) return 0;
   const basicScore = getBasicScore(countLength);
-  const ratioList = elements.map((e) => getRatio(e, icon)) as number[];
+  const ratioList = countInRow.map((e) => getRatio(e, icon)) as number[];
   const ratio = ratioList.reduce((a, b) => a * b, 1);
+
   return basicScore * ratio;
 };
 
@@ -174,7 +230,7 @@ const getBasicScore = (count: number) => {
   return 10 + increase * 5;
 };
 
-const getRatio = (elements: IconDefinition[], icon: IconDefinition) => {
+const getRatio = (elements: IconEnum[], icon: IconEnum) => {
   let maxCount = 0;
   let currentCount = 0;
 
@@ -193,6 +249,71 @@ const getRatio = (elements: IconDefinition[], icon: IconDefinition) => {
   if (maxCount === 2) return 3;
   if (maxCount === 3) return 5;
   return 8;
+};
+
+const InitialModal = (props: {
+  isOpen: boolean;
+  onRemainInput: (remain: number) => void;
+}) => {
+  const { isOpen, onRemainInput } = props;
+  const [number, setNumber] = useState(0);
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    onRemainInput(number);
+  };
+  return (
+    <Modal isOpen={isOpen} onOpenChange={() => {}}>
+      <ModalContent>
+        {(onClose) => (
+          <>
+            <ModalHeader className="flex flex-col gap-1">
+              請輸入初始點數
+            </ModalHeader>
+            <ModalBody>
+              <form onSubmit={handleSubmit}>
+                <Input
+                  type="number"
+                  value={`${number}`}
+                  label="點數"
+                  className="mb-2"
+                  onChange={(e) => setNumber(parseInt(e.target.value))}
+                />
+                <div>
+                  <Button type="submit">提交</Button>
+                </div>
+              </form>
+            </ModalBody>
+            <ModalFooter></ModalFooter>
+          </>
+        )}
+      </ModalContent>
+    </Modal>
+  );
+};
+
+const EndingModal = (props: {
+  remain: number;
+  story: string[];
+  isLoading: boolean;
+  isRolling: boolean;
+}) => {
+  const { remain, story, isLoading, isRolling } = props;
+  const isOpen = remain < 60 && remain !== -1 && !isLoading && !isRolling;
+  return (
+    <Modal isOpen={isOpen} onOpenChange={() => {}}>
+      <ModalContent>
+        {(onClose) => (
+          <>
+            <ModalHeader className="flex flex-col gap-1">遊戲結束</ModalHeader>
+            <ModalBody>
+              <p>{story[story.length - 1]}</p>
+            </ModalBody>
+            <ModalFooter></ModalFooter>
+          </>
+        )}
+      </ModalContent>
+    </Modal>
+  );
 };
 
 const AIRPG = (props: { story: string[]; isLoading: boolean }) => {
@@ -215,9 +336,12 @@ const AIRPG = (props: { story: string[]; isLoading: boolean }) => {
           className=" w-full h-[300px] scroll-smooth"
         >
           {story.map((s, i) => (
-            <p key={s} className="whitespace-pre-wrap mb-2">
-              {s}
-            </p>
+            <>
+              <p key={s} className="whitespace-pre-wrap mb-2">
+                {s}
+              </p>
+              <Divider />
+            </>
           ))}
           {isLoading && (
             <>
@@ -271,12 +395,23 @@ function IntroTitle(props: PropsWithChildren<object>) {
   return <p className={className} {...props} />;
 }
 
+const RemainIndicator = (props: { remain: number }) => {
+  const { remain } = props;
+  return (
+    <div className="flex justify-center items-center">
+      <p>剩餘點數: {remain}</p>
+    </div>
+  );
+};
+
 const Game = (props: {
-  element_list: IconDefinition[][];
+  element_list: IconEnum[][];
+  remain: number;
   rolling: boolean;
+  isLoading: boolean;
   onRoll: () => void;
 }) => {
-  const { onRoll, element_list, rolling } = props;
+  const { onRoll, element_list, rolling, isLoading } = props;
   return (
     <Card className="h-96">
       <CardBody className="flex-row justify-center items-center gap-4">
@@ -286,7 +421,7 @@ const Game = (props: {
       </CardBody>
       <CardFooter>
         <button
-          disabled={rolling}
+          disabled={rolling || isLoading || props.remain < 60}
           onClick={onRoll}
           className="w-full h-12 bg-blue-500 text-white rounded-lg hover:bg-blue-600 focus:outline-none focus:ring focus:bg-blue-600 disabled:opacity-75 disabled:cursor-not-allowed"
         >
@@ -301,7 +436,7 @@ const ElementSet = [faFire, faLeaf, faWater, faWind] as const;
 const ElementSetLength = ElementSet.length;
 
 type SlotProps = {
-  elements: IconDefinition[];
+  elements: IconEnum[];
 };
 
 const Slot = (props: SlotProps) => {
@@ -315,11 +450,11 @@ const Slot = (props: SlotProps) => {
   );
 };
 
-type SoltContainerProps = {
-  elements: IconDefinition[];
+type SlotContainerProps = {
+  elements: IconEnum[];
 };
 
-const SlotContainer = (props: SoltContainerProps) => {
+const SlotContainer = (props: SlotContainerProps) => {
   const { elements } = props;
   const defaultClassName = "absolute flex flex-col ease-in-out ";
 
@@ -328,19 +463,30 @@ const SlotContainer = (props: SoltContainerProps) => {
     (elements.length > 3
       ? `duration-1000 transition-[top] top-[-2664px]`
       : "top-0");
+
   return (
     <div className={className}>
-      {elements.map((e, i) => (
-        <div key={i} className="p-[6px] size-[72px]">
-          <FontAwesomeIcon icon={e} className="w-full h-full" />
-        </div>
-      ))}
+      {elements.map((e, i) => {
+        const icon =
+          e === IconEnum.fire
+            ? faFire
+            : e === IconEnum.leaf
+            ? faLeaf
+            : e === IconEnum.water
+            ? faWater
+            : faWind;
+        return (
+          <div key={i} className="p-[6px] size-[72px]">
+            <FontAwesomeIcon icon={icon} className="w-full h-full" />
+          </div>
+        );
+      })}
     </div>
   );
 };
 
 const getElementList = (len: number) => {
-  let elementList: IconDefinition[] = [];
+  let elementList: IconEnum[] = [];
   for (let i = 0; i < len; i++) {
     const newElement = getRandomElement();
     elementList.push(newElement);
@@ -350,8 +496,8 @@ const getElementList = (len: number) => {
 
 const getRandomElement = () => {
   const selectedIndex = Math.floor(Math.random() * ElementSetLength);
-  const newElement = ElementSet[selectedIndex];
-  return newElement;
+
+  return selectedIndex as IconEnum;
 };
 
 export default GamePage;
