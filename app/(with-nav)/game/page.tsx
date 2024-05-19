@@ -458,11 +458,15 @@ function IntroTitle(props: PropsWithChildren<object>) {
   return <p className={className} {...props} />;
 }
 
-const RemainIndicator = (props: { remain: number }) => {
-  const { remain } = props;
+const RemainIndicator = (props: { remain: number; country: string }) => {
+  const { remain, country } = props;
+  const remainLabel =
+    country === "en" ? "Remain" : country === "sp" ? "Restante" : "Restante";
   return (
     <div className="flex justify-center items-center">
-      <p>剩餘點數: {remain}</p>
+      <p>
+        {remainLabel}: {remain}
+      </p>
     </div>
   );
 };
