@@ -14,6 +14,7 @@ import {
   useFormContext,
 } from "react-hook-form";
 import Image from "next/image";
+import { useEffect, useState } from "react";
 
 type ListPageField = {
   prompt: string;
@@ -26,9 +27,34 @@ const useFormProps: UseFormProps<ListPageField> = {
 };
 
 const ListPage = () => {
+  const [sessionId, setSessionId] = useState("");
+  const [showState, setShowState] = useState([true, true]);
   const useFormReturn = useForm<ListPageField>(useFormProps);
 
-  const handleSubmit = useFormReturn.handleSubmit(async (data) => {});
+  useEffect(() => {
+    const sessionId = Math.random().toString(36).substring(7);
+    setSessionId(sessionId);
+  }, []);
+
+  const handleSubmit = useFormReturn.handleSubmit(async (data) => {
+    const payload = {
+      session_id: sessionId,
+      input_text: data.prompt,
+    };
+    const response = await fetch("/api/search", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payload),
+    });
+
+    const result = (await response.json())["body"] as string;
+
+    const includeMoneyGod = result.toLowerCase().includes("money god");
+    const includeDragon = result.toLowerCase().includes("power dragon");
+    setShowState([includeMoneyGod, includeDragon]);
+  });
 
   return (
     <>
@@ -39,7 +65,14 @@ const ListPage = () => {
           <SearchBar />
         </form>
       </FormProvider>
-      <SearchResult />
+      <div className="flex gap-2 py-4 flex-wrap">
+        {showState[0] && (
+          <GameCard name="財神報喜" tags={["吃角子老虎", "財神"]} />
+        )}
+        {showState[1] && (
+          <GameCard name="龍門天下" tags={["吃角子老虎", "中國龍"]} />
+        )}
+      </div>
     </>
   );
 };
@@ -91,9 +124,9 @@ const GameCard = (props: GameCardProps) => {
     <Card>
       <CardHeader className="pb-0 pt-2 px-4 flex-col items-start">
         <h4 className="font-bold text-large">{name}</h4>
-        <div className="flex flex-wrap gap-2 pt-1">
+        {/* <div className="flex flex-wrap gap-2 pt-1">
           <GameTags tags={tags} />
-        </div>
+        </div> */}
       </CardHeader>
       <CardBody>
         <Image
